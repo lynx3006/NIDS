@@ -1,0 +1,164 @@
+/* ==========================================================================
+   NIDS NOTHING-INSPIRED TECHNICAL THEME
+   Near-black, monochrome, industrial, dot-matrix accents, high density
+   ========================================================================== */
+
+:root {
+  /* Color Palette */
+  --bg-black: #080808;
+  --bg-surface: #101010;
+  --bg-surface-elevated: #151515;
+  --bg-surface-hover: #1a1a1a;
+  --bg-input: #0c0c0c;
+
+  /* Thin Borders */
+  --border-ultra-subtle: #1a1a1a;
+  --border-subtle: #242424;
+  --border-medium: #333333;
+  --border-light: #444444;
+
+  /* Monochromatic & Technical Typography */
+  --text-primary: #f5f5f5;
+  --text-secondary: #999999;
+  --text-muted: #555555;
+  --text-faint: #383838;
+
+  /* Technical Status Accents */
+  --threat-red: #ef4444;
+  --threat-red-dim: rgba(239, 68, 68, 0.12);
+  --threat-red-border: rgba(239, 68, 68, 0.35);
+
+  --safe-green: #10b981;
+  --safe-green-dim: rgba(16, 185, 129, 0.12);
+  --safe-green-border: rgba(16, 185, 129, 0.35);
+
+  --medium-amber: #f59e0b;
+  --medium-amber-dim: rgba(245, 158, 11, 0.12);
+  --medium-amber-border: rgba(245, 158, 11, 0.35);
+
+  --high-orange: #f97316;
+  --high-orange-dim: rgba(249, 115, 22, 0.12);
+  --high-orange-border: rgba(249, 115, 22, 0.35);
+
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, 'Courier New', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+
+  /* Geometry & Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-black);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle Nothing-inspired Dot Grid Background */
+body {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Technical Monospace Elements */
+.font-mono {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: 'zero' 1, 'tnum' 1;
+}
+
+/* Custom Minimal Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-medium);
+}
+
+/* Interactive Focus Styling */
+button, input, select {
+  font-family: inherit;
+  color: inherit;
+  outline: none;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 1px solid var(--border-light);
+  outline-offset: 1px;
+}
+
+/* Utility Dot Matrix Badge/Marker */
+.dot-matrix-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.dot-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot-led.active {
+  background: var(--safe-green);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  animation: pulse-led 2s infinite ease-in-out;
+}
+
+.dot-led.threat {
+  background: var(--threat-red);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  animation: pulse-threat 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-led {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.9); }
+}
+
+@keyframes pulse-threat {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
