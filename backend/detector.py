@@ -39,6 +39,21 @@ def analyze_flow(flow):
     return {
         "xgb_probability": xgb_probability,
         "ocsvm_anomaly": ocsvm_anomaly,
-        "risk_score": score,
+        "hybrid_score": score,
         "risk_level": risk
+    }
+def process_flow(flow_info, flow):
+    result = analyze_flow(flow)
+
+    return {
+        "timestamp": flow_info["timestamp"],
+        "src_ip": flow_info["src_ip"],
+        "dst_ip": flow_info["dst_ip"],
+        "src_port": flow_info["src_port"],
+        "dst_port": flow_info["dst_port"],
+        "protocol": flow_info["protocol"],
+        "xgb_probability": float(result["xgb_probability"]),
+        "ocsvm_anomaly": float(result["ocsvm_anomaly"]),
+        "hybrid_score": float(result["hybrid_score"]),
+        "risk_level": result["risk_level"]
     }

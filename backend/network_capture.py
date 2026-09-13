@@ -1,6 +1,8 @@
 import subprocess
 import pandas as pd
-from detector import analyze_flow
+from detector import analyze_flow,process_flow
+from datetime import datetime
+import requests
 MY_IP = "172.17.51.28"
 command = [
     "tshark",
@@ -46,7 +48,14 @@ for line in process.stdout:
         flows[flow_key]["IN_BYTES"] += length
         flows[flow_key]["IN_PKTS"] += 1
 for flow_key, flow in flows.items():
-        result=analyze_flow(pd.DataFrame([flow]))
-        print(flow_key)
-        print(flow)
-        print(result)
+    src_ip, dst_ip, src_port, dst_port, protocol = flow_key
+    flow_info = {
+        "timestamp": datetime.now().isoformat(),
+        "src_ip": src_ip,
+        "dst_ip": dst_ip,
+        "src_port": int(src_port),
+        "dst_port": int(dst_port),
+        "protocol": protocol
+    }
+    result = process_flow(flow_info,pd.DataFrame([flow]))
+    response = requests.post("http://127.0.0.1:8000/detections",json=result)

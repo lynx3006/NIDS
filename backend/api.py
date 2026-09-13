@@ -12,7 +12,7 @@ class Detection(BaseModel):
     dst_port:int
     protocol:str
     xgb_probability:float
-    ocsvm_score:float
+    ocsvm_anomaly:float
     hybrid_score:float
     risk_level:str
 class DetectionCreate(BaseModel):
@@ -23,7 +23,7 @@ class DetectionCreate(BaseModel):
     dst_port: int
     protocol: str
     xgb_probability: float
-    ocsvm_score: float
+    ocsvm_anomaly: float
     hybrid_score: float
     risk_level: str
 @app.get("/detections", response_model=list[Detection])
@@ -39,7 +39,7 @@ def create_detection(detection: DetectionCreate):
         detection.dst_port,
         detection.protocol,
         detection.xgb_probability,
-        detection.ocsvm_score,
+        detection.ocsvm_anomaly,
         detection.hybrid_score,
         detection.risk_level
     )

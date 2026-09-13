@@ -3,10 +3,10 @@ DATABASE="nids.db"
 def init_db():
     conn=sqlite3.connect(DATABASE)
     cursor=conn.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS detections(id INTEGER PRIMARY KEY,timestamp TEXT NOT NULL,src_ip TEXT,dst_ip TEXT,src_port INTEGER,dst_port INTEGER,protocol TEXT,xgb_probability REAL,ocsvm_score REAL,hybrid_score REAL,risk_level TEXT)""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS detections(id INTEGER PRIMARY KEY,timestamp TEXT NOT NULL,src_ip TEXT,dst_ip TEXT,src_port INTEGER,dst_port INTEGER,protocol TEXT,xgb_probability REAL,ocsvm_anomaly REAL,hybrid_score REAL,risk_level TEXT)""")
     conn.commit()
     conn.close()
-def insert_detection(timestamp,src_ip,dst_ip,src_port,dst_port,protocol,xgb_probability,ocsvm_score,hybrid_score,risk_level):
+def insert_detection(timestamp,src_ip,dst_ip,src_port,dst_port,protocol,xgb_probability,ocsvm_anomaly,hybrid_score,risk_level):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -18,7 +18,7 @@ def insert_detection(timestamp,src_ip,dst_ip,src_port,dst_port,protocol,xgb_prob
         dst_port,
         protocol,
         xgb_probability,
-        ocsvm_score,
+        ocsvm_anomaly,
         hybrid_score,
         risk_level
     )
@@ -31,7 +31,7 @@ def insert_detection(timestamp,src_ip,dst_ip,src_port,dst_port,protocol,xgb_prob
         dst_port,
         protocol,
         xgb_probability,
-        ocsvm_score,
+        ocsvm_anomaly,
         hybrid_score,
         risk_level
     ))
@@ -54,7 +54,7 @@ def get_detections():
             "dst_port": row[5],
             "protocol": row[6],
             "xgb_probability": row[7],
-            "ocsvm_score": row[8],
+            "ocsvm_anomaly": row[8],
             "hybrid_score": row[9],
             "risk_level": row[10]
         })
