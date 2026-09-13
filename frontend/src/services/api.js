@@ -16,9 +16,8 @@ import {
   getRiskLevel
 } from "../mock/mockData";
 
-const USE_MOCK = true;
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:8000/api";
-
+const USE_MOCK = false;
+const API_BASE_URL = "http://localhost:8000";
 // In-memory flow store during session
 let flowStore = [...INITIAL_FLOW_HISTORY];
 
@@ -26,18 +25,45 @@ let flowStore = [...INITIAL_FLOW_HISTORY];
  * Fetch high-level dashboard statistics
  */
 export async function getDashboardStats() {
-  if (USE_MOCK) {
-    // Simulate slight asynchronous resolution
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(calculateDashboardStats(flowStore));
-      }, 50);
-    });
+  const response = await fetch(`${API_BASE_URL}/detections`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch dashboard stats");
   }
 
-  const response = await fetch(`${API_BASE_URL}/stats`);
-  if (!response.ok) throw new Error("Failed to fetch dashboard stats");
-  return response.json();
+  const detections = await response.json();
+
+  const totalFlows = detections.length;
+
+  const lowRisk = detections.filter(d => d.risk_level === "LOW").length;
+  const mediumRisk = detections.filter(d => d.risk_level === "MEDIUM").length;
+  const highRisk = detections.filter(d => d.risk_level === "HIGH").length;
+  const criticalRisk = detections.filter(d => d.risk_level === "CRITICAL").length;
+
+  const latest = detections[0];
+
+  const activeThreatsCount = detections.filter(
+    d => d.hybrid_score >= 0.6
+  ).length;
+
+  const activeAnomalyCount = detections.filter(
+    d => d.ocsvm_anomaly >= 0.5
+  ).length;
+
+  return {
+    totalFlows,
+    lowRisk,
+    mediumRisk,
+    highRisk,
+    criticalRisk,
+    currentRiskLevel: latest?.risk_level || "LOW",
+    currentHybridScore: latest?.hybrid_score || 0,
+    monitoredHost: latest?.src_ip || "N/A",
+    activeThreatsCount,
+    activeAnomalyPercentage: totalFlows
+      ? Number(((activeAnomalyCount / totalFlows) * 100).toFixed(1))
+      : 0
+  };
 }
 
 /**
@@ -52,7 +78,7 @@ export async function getRecentDetections(limit = 6) {
     });
   }
 
-  const response = await fetch(`${API_BASE_URL}/detections/recent?limit=${limit}`);
+  const response = await fetch(`${API_BASE_URL}/detections`);
   if (!response.ok) throw new Error("Failed to fetch recent detections");
   return response.json();
 }
@@ -124,7 +150,7 @@ export async function getDetectionHistory({
     limit: String(limit)
   });
 
-  const response = await fetch(`${API_BASE_URL}/detections/history?${queryParams}`);
+  const response = await fetch(`${API_BASE_URL}/detections`);
   if (!response.ok) throw new Error("Failed to fetch detection history");
   return response.json();
 }
@@ -166,9 +192,46 @@ export async function getTrafficOverview() {
     });
   }
 
-  const response = await fetch(`${API_BASE_URL}/traffic/overview`);
-  if (!response.ok) throw new Error("Failed to fetch traffic overview");
-  return response.json();
+const response = await fetch(`${API_BASE_URL}/detections`);
+
+if (!response.ok) {
+  throw new Error("Failed to fetch traffic overview");
+}
+
+const detections = await response.json();
+
+const protocols = { TCP: 0, UDP: 0, ICMP: 0, OTHER: 0 };
+
+let totalInBytes = 0;
+let totalOutBytes = 0;
+let totalInPkts = 0;
+let totalOutPkts = 0;
+
+detections.forEach((d) => {
+  if (d.protocol === "6") {
+    protocols.TCP++;
+  } else if (d.protocol === "17") {
+    protocols.UDP++;
+  } else if (d.protocol === "1") {
+    protocols.ICMP++;
+  } else {
+    protocols.OTHER++;
+  }
+
+  totalInBytes += d.IN_BYTES;
+  totalOutBytes += d.OUT_BYTES;
+  totalInPkts += d.IN_PKTS;
+  totalOutPkts += d.OUT_PKTS;
+});
+
+return {
+  protocols,
+  totalInBytes,
+  totalOutBytes,
+  totalInPkts,
+  totalOutPkts,
+  activeFlowRate: detections.length
+};
 }
 
 /**
@@ -218,9 +281,57 @@ export async function getModelAnalysis() {
     });
   }
 
-  const response = await fetch(`${API_BASE_URL}/model/analysis`);
-  if (!response.ok) throw new Error("Failed to fetch model analysis");
-  return response.json();
+  const response = await fetch(`${API_BASE_URL}/detections`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch model analysis");
+  }
+
+  const detections = await response.json();
+
+  const avgXgb =
+    detections.reduce((sum, d) => sum + d.xgb_probability, 0) /
+    detections.length;
+
+  const avgOcsvm =
+    detections.reduce((sum, d) => sum + d.ocsvm_anomaly, 0) /
+    detections.length;
+
+  const avgHybrid =
+    detections.reduce((sum, d) => sum + d.hybrid_score, 0) /
+    detections.length;
+
+  return {
+    models: {
+      supervised: {
+        name: "XGBoost Classifier",
+        file: "XGboost_model.pkl",
+        metricName: "Attack Probability",
+        averageScore: Number(avgXgb.toFixed(4)),
+        threshold: 0.50
+      },
+      unsupervised: {
+        name: "One-Class SVM",
+        file: "ocsvm_model.pkl",
+        scaler: "ocsvm_scaler.pkl",
+        metricName: "Anomaly Score",
+        averageScore: Number(avgOcsvm.toFixed(4)),
+        threshold: 0.50
+      },
+      hybrid: {
+        name: "Hybrid Risk Engine",
+        formula: "min(xgb, ocsvm) + (0.2 if both >= 0.5 else 0.0)",
+        averageScore: Number(avgHybrid.toFixed(4)),
+        riskLevels: {
+          LOW: "< 0.30",
+          MEDIUM: "0.30 - 0.59",
+          HIGH: "0.60 - 0.79",
+          CRITICAL: ">= 0.80"
+        }
+      }
+    },
+    samples: detections.slice(0, 8)
+  };
 }
 
 /**

@@ -1,9 +1,13 @@
 import subprocess
 import pandas as pd
-from detector import analyze_flow,process_flow
+from detector import process_flow
 from datetime import datetime
 import requests
+import time
+
 MY_IP = "172.17.51.28"
+FLOW_TIMEOUT = 5
+
 command = [
     "tshark",
     "-i", "4",
@@ -16,39 +20,23 @@ command = [
     "-e", "udp.srcport",
     "-e", "udp.dstport",
     "-e", "ip.proto",
-    "-e", "frame.len",
-    "-c", "20"
+    "-e", "frame.len"
 ]
+
 process = subprocess.Popen(
     command,
     stdout=subprocess.PIPE,
     text=True
 )
-flows= {}
-for line in process.stdout:
-    fields = line.strip().split("\t")
-    if len(fields) < 8:
-        continue
-    src = fields[0]
-    dst = fields[1]
-    src_port = fields[2] or fields[4]
-    dst_port = fields[3] or fields[5]
-    protocol = fields[6]
-    if src==MY_IP:
-        flow_key = (MY_IP, dst, src_port, dst_port, protocol)
-    else:
-        flow_key = (MY_IP,src,dst_port,src_port,protocol)
-    if flow_key not in flows:
-        flows[flow_key] = {"IN_BYTES": 0,"OUT_BYTES": 0,"IN_PKTS": 0,"OUT_PKTS": 0}
-    length = int(fields[7])
-    if src == MY_IP:
-        flows[flow_key]["OUT_BYTES"] += length
-        flows[flow_key]["OUT_PKTS"] += 1
-    else:
-        flows[flow_key]["IN_BYTES"] += length
-        flows[flow_key]["IN_PKTS"] += 1
-for flow_key, flow in flows.items():
+
+flows = {}
+last_seen = {}
+
+def save_flow(flow_key):
+    flow = flows[flow_key]
+
     src_ip, dst_ip, src_port, dst_port, protocol = flow_key
+
     flow_info = {
         "timestamp": datetime.now().isoformat(),
         "src_ip": src_ip,
@@ -57,5 +45,71 @@ for flow_key, flow in flows.items():
         "dst_port": int(dst_port),
         "protocol": protocol
     }
-    result = process_flow(flow_info,pd.DataFrame([flow]))
-    response = requests.post("http://127.0.0.1:8000/detections",json=result)
+
+    result = process_flow(
+        flow_info,
+        pd.DataFrame([flow])
+    )
+
+    response = requests.post(
+        "http://127.0.0.1:8000/detections",
+        json=result
+    )
+
+    print(response.json())
+
+    del flows[flow_key]
+    del last_seen[flow_key]
+try:
+    for line in process.stdout:
+        fields = line.strip().split("\t")
+
+        if len(fields) < 8:
+            continue
+
+        src = fields[0]
+        dst = fields[1]
+        src_port = fields[2] or fields[4]
+        dst_port = fields[3] or fields[5]
+        protocol = fields[6]
+
+        if src == MY_IP:
+            flow_key = (MY_IP, dst, src_port, dst_port, protocol)
+        else:
+            flow_key = (MY_IP, src, dst_port, src_port, protocol)
+
+        if flow_key not in flows:
+            flows[flow_key] = {
+                "IN_BYTES": 0,
+                "OUT_BYTES": 0,
+                "IN_PKTS": 0,
+                "OUT_PKTS": 0
+            }
+
+        length = int(fields[7])
+
+        if src == MY_IP:
+            flows[flow_key]["OUT_BYTES"] += length
+            flows[flow_key]["OUT_PKTS"] += 1
+        else:
+            flows[flow_key]["IN_BYTES"] += length
+            flows[flow_key]["IN_PKTS"] += 1
+
+        last_seen[flow_key] = time.time()
+
+        current_time = time.time()
+
+        expired_flows = [
+            key for key in last_seen
+            if current_time - last_seen[key] >= FLOW_TIMEOUT
+        ]
+
+        for key in expired_flows:
+            save_flow(key)
+except KeyboardInterrupt:
+    print("\nStopping capture...")
+
+    for key in list(flows):
+        save_flow(key)
+
+    process.terminate()

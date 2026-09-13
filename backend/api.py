@@ -1,8 +1,16 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from backend.database import get_detections
 from backend.database import insert_detection
 from pydantic import BaseModel
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class Detection(BaseModel):
     id:int
     timestamp:str
@@ -11,6 +19,10 @@ class Detection(BaseModel):
     src_port:int
     dst_port:int
     protocol:str
+    IN_BYTES:int
+    OUT_BYTES:int
+    IN_PKTS:int
+    OUT_PKTS:int
     xgb_probability:float
     ocsvm_anomaly:float
     hybrid_score:float
@@ -22,6 +34,10 @@ class DetectionCreate(BaseModel):
     src_port: int
     dst_port: int
     protocol: str
+    IN_BYTES: int
+    OUT_BYTES: int
+    IN_PKTS: int
+    OUT_PKTS: int
     xgb_probability: float
     ocsvm_anomaly: float
     hybrid_score: float
@@ -38,6 +54,10 @@ def create_detection(detection: DetectionCreate):
         detection.src_port,
         detection.dst_port,
         detection.protocol,
+        detection.IN_BYTES,
+        detection.OUT_BYTES,
+        detection.IN_PKTS,
+        detection.OUT_PKTS,
         detection.xgb_probability,
         detection.ocsvm_anomaly,
         detection.hybrid_score,
